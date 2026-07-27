@@ -15,6 +15,13 @@ def load_config():
         print(f"Error loading config.json: {e}")
         return {}
 
+def save_config(config):
+    try:
+        with open(CONFIG_PATH, "w") as f:
+            json.dump(config, f, indent=2)
+    except Exception as e:
+        print(f"Error saving config.json: {e}")
+
 def main():
     config = load_config()
     
@@ -23,7 +30,7 @@ def main():
         max_lock_resets=config.get("handling", {}).get("max_lock_resets", 15)
     )
     
-    input_handler = InputHandler(config)
+    input_handler = InputHandler(config, save_config_cb=save_config)
     renderer = Renderer()
 
     clock = pygame.time.Clock()
@@ -37,7 +44,7 @@ def main():
         
         running = input_handler.process_input(engine, importer_callback=import_cb)
         engine.update(dt_ms)
-        renderer.render(engine, config)
+        renderer.render(engine, config, input_handler)
 
     pygame.quit()
 
