@@ -26,7 +26,7 @@ class Renderer:
 
         self._draw_board(engine)
         self._draw_hold(engine)
-        self._draw_queue(engine)
+        self._draw_queue(engine, input_handler)
         self._draw_info_overlay(config)
         self._draw_palette(input_handler)
         self._draw_settings_panel(config, input_handler)
@@ -99,12 +99,16 @@ class Renderer:
                 py = box_rect.y + 50 + by * 20
                 pygame.draw.rect(self.screen, color, (px, py, 18, 18), border_radius=2)
 
-    def _draw_queue(self, engine):
+    def _draw_queue(self, engine, input_handler=None):
         box_rect = pygame.Rect(540, GRID_OFFSET_Y, 130, 420)
         pygame.draw.rect(self.screen, (10, 10, 15), box_rect)
-        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, 2)
 
-        txt = self.title_font.render("NEXT", True, (200, 200, 200))
+        in_queue_input = input_handler.in_queue_input if input_handler else False
+        border_col = (240, 200, 0) if in_queue_input else BORDER_COLOR
+        pygame.draw.rect(self.screen, border_col, box_rect, 2)
+
+        title_str = "NEXT (TYPE)" if in_queue_input else "NEXT [Q]"
+        txt = self.title_font.render(title_str, True, (240, 200, 0) if in_queue_input else (200, 200, 200))
         self.screen.blit(txt, (box_rect.x + 10, box_rect.y + 10))
 
         for i in range(min(5, len(engine.queue))):
@@ -127,8 +131,9 @@ class Renderer:
             f"SDF: {handling.get('sdf')}x",
             "",
             "[TAB] Toggle Settings",
+            "[Q] Type Queue (I,J,L...)",
             "[R] Reset Board",
-            "[I] Import (test.png)",
+            "[I] Import Screenshot",
             "[L-Click] Paint / Queue",
             "[R-Click] Erase / Queue",
         ]
@@ -173,16 +178,20 @@ class Renderer:
                 self.screen.blit(lbl, (bx + 32, by + 7))
 
     def _draw_settings_panel(self, config, input_handler):
-        panel_rect = pygame.Rect(690, GRID_OFFSET_Y, 210, 600)
+        in_settings = input_handler.in_settings if input_handler else False
+        panel_height = 600 if in_settings else 40
+        panel_rect = pygame.Rect(690, GRID_OFFSET_Y, 210, panel_height)
         pygame.draw.rect(self.screen, (10, 10, 15), panel_rect)
 
-        in_settings = input_handler.in_settings if input_handler else False
         border_col = (0, 200, 240) if in_settings else BORDER_COLOR
         pygame.draw.rect(self.screen, border_col, panel_rect, 2)
 
         header_str = "SETTINGS (ACTIVE)" if in_settings else "SETTINGS [TAB]"
         txt = self.title_font.render(header_str, True, (0, 240, 240) if in_settings else (180, 180, 200))
         self.screen.blit(txt, (panel_rect.x + 10, panel_rect.y + 10))
+
+        if not in_settings:
+            return
 
         y = panel_rect.y + 45
         sel_idx = input_handler.selected_setting_index if input_handler else -1

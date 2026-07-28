@@ -36,6 +36,7 @@ class InputHandler:
         self.selected_setting_index = 0
         self.rebinding = False
 
+        self.in_queue_input = False
         self.selected_paint_piece = 'G'
         self.mouse_left_down = False
         self.mouse_right_down = False
@@ -74,6 +75,25 @@ class InputHandler:
                     self.rebinding = False
                     continue
 
+                # Toggle queue typing mode with Q or ESC/Enter while in queue input
+                if self.in_queue_input:
+                    if key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_q):
+                        self.in_queue_input = False
+                        continue
+                    elif key == pygame.K_BACKSPACE:
+                        if engine.queue:
+                            engine.queue.pop()
+                        continue
+                    else:
+                        char = event.unicode.upper()
+                        if char in ['I', 'J', 'L', 'O', 'S', 'T', 'Z']:
+                            engine.queue.append(char)
+                        continue
+
+                if key == pygame.K_q:
+                    self.in_queue_input = True
+                    continue
+
                 # Toggle settings mode with TAB or ESC
                 if key in (pygame.K_TAB, pygame.K_ESCAPE):
                     self.in_settings = not self.in_settings
@@ -84,6 +104,11 @@ class InputHandler:
 
                 if self.in_settings:
                     self._handle_settings_keydown(key)
+                    continue
+
+                # Shift + Piece Key for quick queue entry
+                if (pygame.key.get_mods() & pygame.KMOD_SHIFT) and event.unicode.upper() in ['I', 'J', 'L', 'O', 'S', 'T', 'Z']:
+                    engine.queue.append(event.unicode.upper())
                     continue
 
                 # In-game key handling
@@ -183,6 +208,7 @@ class InputHandler:
 
         # Check Queue click
         if 540 <= mx < 670 and 50 <= my < 470:
+            self.in_queue_input = True
             for i in range(min(5, len(engine.queue))):
                 qy = 50 + 45 + i * 70
                 if qy <= my < qy + 65:

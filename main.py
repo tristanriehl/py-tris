@@ -3,7 +3,7 @@ import pygame
 from engine import TetrisEngine
 from input import InputHandler
 from ui import Renderer
-from importer import load_and_parse_screenshot
+from importer import load_and_parse_screenshot, capture_and_parse_screenshot
 
 CONFIG_PATH = "config.json"
 
@@ -37,7 +37,7 @@ def main():
     running = True
 
     def import_cb():
-        load_and_parse_screenshot("test.png", engine)
+        capture_and_parse_screenshot(engine)
 
     while running:
         dt_ms = clock.tick(120)  # Smooth 120 FPS target for Mac displays

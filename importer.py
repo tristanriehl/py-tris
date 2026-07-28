@@ -1,4 +1,6 @@
 import os
+import tempfile
+import subprocess
 import cv2
 import numpy as np
 from PIL import Image
@@ -88,3 +90,23 @@ def load_and_parse_screenshot(image_path, engine):
     engine.spawn_piece()
     print("Successfully imported screenshot board state!")
     return True
+
+def capture_and_parse_screenshot(engine):
+    """
+    Triggers OS screenshot tool to take a selection, then loads board state.
+    """
+    temp_path = os.path.join(tempfile.gettempdir(), "tetris_screenshot.png")
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+
+    try:
+        subprocess.run(["screencapture", "-i", temp_path], check=True)
+    except Exception as e:
+        print(f"Screenshot capture cancelled or failed: {e}")
+        return False
+
+    if not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+        print("No screenshot captured.")
+        return False
+
+    return load_and_parse_screenshot(temp_path, engine)
