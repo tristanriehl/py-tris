@@ -77,29 +77,34 @@ class InputHandler:
         right_key = self.keybinds.get("move_right")
         soft_drop_key = self.keybinds.get("soft_drop")
 
-        if left_key and left_key < len(pressed_keys):
-            new_left = bool(pressed_keys[left_key])
-            if new_left and not self.left_pressed:
-                self.left_das_timer = 0.0
-                self.left_arr_timer = 0.0
-                engine.move_left()
-                self.right_pressed = False
-            self.left_pressed = new_left
+        if not self.in_queue_input:
+            if left_key and left_key < len(pressed_keys):
+                new_left = bool(pressed_keys[left_key])
+                if new_left and not self.left_pressed:
+                    self.left_das_timer = 0.0
+                    self.left_arr_timer = 0.0
+                    engine.move_left()
+                    self.right_pressed = False
+                self.left_pressed = new_left
 
-        if right_key and right_key < len(pressed_keys):
-            new_right = bool(pressed_keys[right_key])
-            if new_right and not self.right_pressed:
-                self.right_das_timer = 0.0
-                self.right_arr_timer = 0.0
-                engine.move_right()
-                self.left_pressed = False
-            self.right_pressed = new_right
+            if right_key and right_key < len(pressed_keys):
+                new_right = bool(pressed_keys[right_key])
+                if new_right and not self.right_pressed:
+                    self.right_das_timer = 0.0
+                    self.right_arr_timer = 0.0
+                    engine.move_right()
+                    self.left_pressed = False
+                self.right_pressed = new_right
 
-        if soft_drop_key and soft_drop_key < len(pressed_keys):
-            self.soft_drop_pressed = bool(pressed_keys[soft_drop_key])
+            if soft_drop_key and soft_drop_key < len(pressed_keys):
+                self.soft_drop_pressed = bool(pressed_keys[soft_drop_key])
+        else:
+            self.left_pressed = False
+            self.right_pressed = False
+            self.soft_drop_pressed = False
 
         # Smooth continuous repeating for Ctrl+Z / Ctrl+Shift+Z (Undo / Redo) when held down
-        if is_cmd_or_ctrl and not self.rebinding and not self.in_settings:
+        if is_cmd_or_ctrl and not self.rebinding and not self.in_settings and not self.in_queue_input:
             z_pressed = pressed_keys[pygame.K_z]
             y_pressed = pressed_keys[pygame.K_y]
             
@@ -146,6 +151,24 @@ class InputHandler:
             elif event.type == pygame.KEYDOWN:
                 key = event.key
 
+                # Toggle queue typing mode with Q or ESC/Enter while in queue input
+                if self.in_queue_input:
+                    if key in (pygame.K_ESCAPE, pygame.K_RETURN):
+                        self.in_queue_input = False
+                        continue
+                    elif key in (pygame.K_BACKSPACE, pygame.K_DELETE):
+                        if engine.queue:
+                            engine.queue.pop()
+                        continue
+                    elif key == pygame.K_c and is_cmd_or_ctrl:
+                        engine.queue.clear()
+                        continue
+                    else:
+                        char = event.unicode.upper()
+                        if char in ['I', 'J', 'L', 'O', 'S', 'T', 'Z']:
+                            engine.queue.append(char)
+                        continue
+
                 # Undo / Redo single press handling
                 if is_cmd_or_ctrl and not self.rebinding and not self.in_settings:
                     if key == pygame.K_z:
@@ -168,24 +191,6 @@ class InputHandler:
                             self.save_config_cb(self.config)
                     self.rebinding = False
                     continue
-
-                # Toggle queue typing mode with Q or ESC/Enter while in queue input
-                if self.in_queue_input:
-                    if key in (pygame.K_ESCAPE, pygame.K_RETURN):
-                        self.in_queue_input = False
-                        continue
-                    elif key in (pygame.K_BACKSPACE, pygame.K_DELETE):
-                        if engine.queue:
-                            engine.queue.pop()
-                        continue
-                    elif key == pygame.K_c and is_cmd_or_ctrl:
-                        engine.queue.clear()
-                        continue
-                    else:
-                        char = event.unicode.upper()
-                        if char in ['I', 'J', 'L', 'O', 'S', 'T', 'Z']:
-                            engine.queue.append(char)
-                        continue
 
                 if key == pygame.K_q and not self.in_settings:
                     self.in_queue_input = True
@@ -227,7 +232,7 @@ class InputHandler:
                         importer_callback()
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button in (1, 3):
+                if not self.in_queue_input and event.button in (1, 3):
                     if event.button == 1:
                         self.mouse_left_down = True
                         self._handle_mouse_click(event.pos, engine, is_left=True)
@@ -242,12 +247,13 @@ class InputHandler:
                     self.mouse_right_down = False
 
             elif event.type == pygame.MOUSEMOTION:
-                if self.mouse_left_down:
-                    self._handle_board_drag(event.pos, engine, paint=True)
-                elif self.mouse_right_down:
-                    self._handle_board_drag(event.pos, engine, paint=False)
+                if not self.in_queue_input:
+                    if self.mouse_left_down:
+                        self._handle_board_drag(event.pos, engine, paint=True)
+                    elif self.mouse_right_down:
+                        self._handle_board_drag(event.pos, engine, paint=False)
 
-        if not self.in_settings:
+        if not self.in_settings and not self.in_queue_input:
             # Continuous Input Processing (DAS / ARR / Soft Drop)
             self._handle_das_arr(dt_ms, engine)
             self._handle_soft_drop(dt_ms, engine)
@@ -255,7 +261,7 @@ class InputHandler:
         return True
 
     def _handle_mouse_click(self, pos, engine, is_left):
-        if self.in_settings:
+        if self.in_settings or self.in_queue_input:
             return
 
         mx, my = pos
@@ -311,7 +317,7 @@ class InputHandler:
         self._handle_board_drag(pos, engine, paint=is_left)
 
     def _handle_board_drag(self, pos, engine, paint):
-        if self.in_settings:
+        if self.in_settings or self.in_queue_input:
             return
 
         mx, my = pos
