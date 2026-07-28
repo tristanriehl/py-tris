@@ -77,12 +77,15 @@ class InputHandler:
 
                 # Toggle queue typing mode with Q or ESC/Enter while in queue input
                 if self.in_queue_input:
-                    if key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_q):
+                    if key in (pygame.K_ESCAPE, pygame.K_RETURN):
                         self.in_queue_input = False
                         continue
-                    elif key == pygame.K_BACKSPACE:
+                    elif key in (pygame.K_BACKSPACE, pygame.K_DELETE):
                         if engine.queue:
                             engine.queue.pop()
+                        continue
+                    elif key == pygame.K_c and (pygame.key.get_mods() & (pygame.KMOD_CTRL | pygame.KMOD_META)):
+                        engine.queue.clear()
                         continue
                     else:
                         char = event.unicode.upper()
@@ -90,7 +93,7 @@ class InputHandler:
                             engine.queue.append(char)
                         continue
 
-                if key == pygame.K_q:
+                if key == pygame.K_q and not self.in_settings:
                     self.in_queue_input = True
                     continue
 

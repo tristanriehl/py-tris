@@ -101,26 +101,36 @@ class Renderer:
 
     def _draw_queue(self, engine, input_handler=None):
         box_rect = pygame.Rect(540, GRID_OFFSET_Y, 130, 420)
-        pygame.draw.rect(self.screen, (10, 10, 15), box_rect)
+        pygame.draw.rect(self.screen, (10, 10, 15), box_rect, border_radius=6)
 
         in_queue_input = input_handler.in_queue_input if input_handler else False
         border_col = (240, 200, 0) if in_queue_input else BORDER_COLOR
-        pygame.draw.rect(self.screen, border_col, box_rect, 2)
+        pygame.draw.rect(self.screen, border_col, box_rect, 2, border_radius=6)
 
-        title_str = "NEXT (TYPE)" if in_queue_input else "NEXT [Q]"
+        title_str = "NEXT (TYPING)" if in_queue_input else "NEXT [Q]"
         txt = self.title_font.render(title_str, True, (240, 200, 0) if in_queue_input else (200, 200, 200))
         self.screen.blit(txt, (box_rect.x + 10, box_rect.y + 10))
 
+        # Active Queue Input Text Box Indicator
+        if in_queue_input:
+            input_box = pygame.Rect(box_rect.x + 8, box_rect.y + 36, 114, 24)
+            pygame.draw.rect(self.screen, (30, 35, 45), input_box, border_radius=4)
+            pygame.draw.rect(self.screen, (240, 200, 0), input_box, 1, border_radius=4)
+            q_str = "".join(engine.queue[-7:]) + "_"
+            q_txt = self.font.render(q_str, True, (255, 220, 100))
+            self.screen.blit(q_txt, (input_box.x + 5, input_box.y + 3))
+
+        start_y = 65 if in_queue_input else 45
         for i in range(min(5, len(engine.queue))):
             piece_type = engine.queue[i]
             color = COLORS[piece_type]
             blocks = TETROMINOES[piece_type][0]
-            slot_rect = pygame.Rect(box_rect.x + 10, box_rect.y + 45 + i * 70, 110, 65)
+            slot_rect = pygame.Rect(box_rect.x + 10, box_rect.y + start_y + i * 68, 110, 62)
             pygame.draw.rect(self.screen, (20, 22, 30), slot_rect, border_radius=4)
             pygame.draw.rect(self.screen, (40, 40, 55), slot_rect, 1, border_radius=4)
             for bx, by in blocks:
                 px = slot_rect.x + 25 + bx * 18
-                py = slot_rect.y + 12 + by * 18
+                py = slot_rect.y + 10 + by * 18
                 pygame.draw.rect(self.screen, color, (px, py, 16, 16), border_radius=2)
 
     def _draw_info_overlay(self, config):
