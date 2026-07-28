@@ -203,7 +203,7 @@ class InputHandler:
                     self._handle_settings_keydown(key)
                     continue
 
-                # In-game key handling (independent of shift state)
+                # In-game key handling using configured keybinds
                 if key == self.keybinds.get("hard_drop"):
                     engine.hard_drop()
 
@@ -260,20 +260,21 @@ class InputHandler:
 
         mx, my = pos
 
-        # Check Palette click
+        # Check Palette click (Updated coordinates matching UI layout)
         palette_items = ['G', 'I', 'J', 'L', 'O', 'S', 'T', 'Z', None]
-        if 35 <= mx < 195 and 390 <= my < 650:
+        box_x, box_y = 30, 115
+        if box_x <= mx < box_x + 200 and box_y <= my < box_y + 180:
             for idx, p_type in enumerate(palette_items):
                 col = idx % 2
                 row = idx // 2
-                bx = 35 + 12 + col * 70
-                by = 390 + 38 + row * 40
-                if bx <= mx < bx + 62 and by <= my < by + 32:
+                bx = box_x + 12 + col * 90
+                by = box_y + 38 + row * 28
+                if bx <= mx < bx + 86 and by <= my < by + 24:
                     self.selected_paint_piece = p_type
                     return
 
         # Check Hold Box click
-        if 50 <= mx < 180 and 50 <= my < 170:
+        if 30 <= mx < 230 and 30 <= my < 130:
             engine.save_state()
             tetro_types = ['I', 'J', 'L', 'O', 'S', 'T', 'Z']
             if is_left and self.selected_paint_piece in tetro_types:
@@ -289,11 +290,11 @@ class InputHandler:
             return
 
         # Check Queue click
-        if 540 <= mx < 670 and 50 <= my < 470:
+        if 580 <= mx < 750 and 30 <= my < 430:
             self.in_queue_input = True
             for i in range(min(5, len(engine.queue))):
-                qy = 50 + 45 + i * 70
-                if qy <= my < qy + 65:
+                qy = 30 + (70 if self.in_queue_input else 42) + i * 62
+                if qy <= my < qy + 56:
                     engine.save_state()
                     tetro_types = ['I', 'J', 'L', 'O', 'S', 'T', 'Z']
                     if is_left and self.selected_paint_piece in tetro_types:
@@ -314,8 +315,8 @@ class InputHandler:
             return
 
         mx, my = pos
-        grid_x = (mx - 220) // 30
-        grid_y = (my - 50) // 30
+        grid_x = (mx - 260) // 30
+        grid_y = (my - 30) // 30
         if 0 <= grid_x < 10 and 0 <= grid_y < 20:
             board_r = 20 + grid_y
             new_val = self.selected_paint_piece if paint else None

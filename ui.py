@@ -149,12 +149,16 @@ class Renderer:
 
     def _draw_info_overlay(self, config):
         handling = config.get("handling", {})
+        keybinds = config.get("keybinds", {})
         box_rect = pygame.Rect(30, 310, 200, 230)
         pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=8)
         pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, 1, border_radius=8)
 
         txt = self.header_font.render("CONTROLS & INFO", True, TEXT_MAIN)
         self.screen.blit(txt, (box_rect.x + 14, box_rect.y + 12))
+
+        reset_key = pygame.key.name(keybinds.get("reset", pygame.K_r)).upper()
+        import_key = pygame.key.name(keybinds.get("import_screenshot", pygame.K_i)).upper()
 
         info = [
             f"DAS: {handling.get('das_ms')}ms  |  ARR: {handling.get('arr_ms')}ms",
@@ -163,8 +167,8 @@ class Renderer:
             "[TAB] Toggle Settings",
             "[Q] Type Queue",
             "[Ctrl + Z/Y] Undo / Redo",
-            "[R] Reset Board",
-            "[I] Import Screenshot",
+            f"[{reset_key}] Reset Board",
+            f"[{import_key}] Import Screenshot",
             "[Click/Drag] Paint Board",
         ]
         y = box_rect.y + 38
