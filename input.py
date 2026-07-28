@@ -60,16 +60,45 @@ class InputHandler:
         dt_ms = (now - self.last_time) * 1000.0
         self.last_time = now
 
+        # Poll persistent keyboard state for true N-key rollover and independent handling
+        pressed_keys = pygame.key.get_pressed()
+        mods = pygame.key.get_mods()
+        is_cmd_or_ctrl = bool(mods & (pygame.KMOD_CTRL | pygame.KMOD_META))
+        is_shift = bool(mods & pygame.KMOD_SHIFT)
+
+        # Check continuous movement states directly from key down/up events or polling
+        # We update left/right based on current physical key states to prevent stuck keys or modifier blockage
+        left_key = self.keybinds.get("move_left")
+        right_key = self.keybinds.get("move_right")
+        soft_drop_key = self.keybinds.get("soft_drop")
+
+        if left_key and left_key < len(pressed_keys):
+            new_left = bool(pressed_keys[left_key])
+            if new_left and not self.left_pressed:
+                self.left_das_timer = 0.0
+                self.left_arr_timer = 0.0
+                engine.move_left()
+                self.right_pressed = False
+            self.left_pressed = new_left
+
+        if right_key and right_key < len(pressed_keys):
+            new_right = bool(pressed_keys[right_key])
+            if new_right and not self.right_pressed:
+                self.right_das_timer = 0.0
+                self.right_arr_timer = 0.0
+                engine.move_right()
+                self.left_pressed = False
+            self.right_pressed = new_right
+
+        if soft_drop_key and soft_drop_key < len(pressed_keys):
+            self.soft_drop_pressed = bool(pressed_keys[soft_drop_key])
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
 
             elif event.type == pygame.KEYDOWN:
                 key = event.key
-
-                mods = pygame.key.get_mods()
-                is_cmd_or_ctrl = bool(mods & (pygame.KMOD_CTRL | pygame.KMOD_META))
-                is_shift = bool(mods & pygame.KMOD_SHIFT)
 
                 # Undo / Redo handling
                 if is_cmd_or_ctrl and not self.rebinding and not self.in_settings:
@@ -103,7 +132,7 @@ class InputHandler:
                         if engine.queue:
                             engine.queue.pop()
                         continue
-                    elif key == pygame.K_c and (pygame.key.get_mods() & (pygame.KMOD_CTRL | pygame.KMOD_META)):
+                    elif key == pygame.K_c and is_cmd_or_ctrl:
                         engine.queue.clear()
                         continue
                     else:
@@ -128,31 +157,8 @@ class InputHandler:
                     self._handle_settings_keydown(key)
                     continue
 
-                # Shift + Piece Key for quick queue entry (only consume event if shift is held AND it's a piece key)
-                if is_shift and event.unicode.upper() in ['I', 'J', 'L', 'O', 'S', 'T', 'Z']:
-                    engine.queue.append(event.unicode.upper())
-                    continue
-
-                # In-game key handling
-                if key == self.keybinds.get("move_left"):
-                    self.left_pressed = True
-                    self.left_das_timer = 0.0
-                    self.left_arr_timer = 0.0
-                    engine.move_left()
-                    self.right_pressed = False
-
-                elif key == self.keybinds.get("move_right"):
-                    self.right_pressed = True
-                    self.right_das_timer = 0.0
-                    self.right_arr_timer = 0.0
-                    engine.move_right()
-                    self.left_pressed = False
-
-                elif key == self.keybinds.get("soft_drop"):
-                    self.soft_drop_pressed = True
-                    self.soft_drop_timer = 0.0
-
-                elif key == self.keybinds.get("hard_drop"):
+                # In-game key handling (independent of shift state)
+                if key == self.keybinds.get("hard_drop"):
                     engine.hard_drop()
 
                 elif key == self.keybinds.get("rotate_cw"):
@@ -173,15 +179,6 @@ class InputHandler:
                 elif key == self.keybinds.get("import_screenshot"):
                     if importer_callback:
                         importer_callback()
-
-            elif event.type == pygame.KEYUP:
-                key = event.key
-                if key == self.keybinds.get("move_left"):
-                    self.left_pressed = False
-                elif key == self.keybinds.get("move_right"):
-                    self.right_pressed = False
-                elif key == self.keybinds.get("soft_drop"):
-                    self.soft_drop_pressed = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button in (1, 3):
