@@ -128,8 +128,8 @@ class InputHandler:
                     self._handle_settings_keydown(key)
                     continue
 
-                # Shift + Piece Key for quick queue entry
-                if (pygame.key.get_mods() & pygame.KMOD_SHIFT) and event.unicode.upper() in ['I', 'J', 'L', 'O', 'S', 'T', 'Z']:
+                # Shift + Piece Key for quick queue entry (only consume event if shift is held AND it's a piece key)
+                if is_shift and event.unicode.upper() in ['I', 'J', 'L', 'O', 'S', 'T', 'Z']:
                     engine.queue.append(event.unicode.upper())
                     continue
 

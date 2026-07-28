@@ -9,13 +9,13 @@ GRID_OFFSET_Y = 30
 WINDOW_WIDTH = 780
 WINDOW_HEIGHT = 730
 
-BACKGROUND_COLOR = (240, 240, 245)
+BACKGROUND_COLOR = (0xCB, 0xF7, 0xED)
 SURFACE_COLOR = (255, 255, 255)
-SURFACE_ALT_COLOR = (230, 230, 238)
-GRID_LINE_COLOR = (215, 215, 225)
-BORDER_COLOR = (200, 200, 215)
+SURFACE_ALT_COLOR = (215, 240, 235)
+GRID_LINE_COLOR = (185, 220, 212)
+BORDER_COLOR = (160, 205, 195)
 TEXT_MAIN = (40, 40, 55)
-TEXT_MUTED = (110, 110, 130)
+TEXT_MUTED = (90, 120, 115)
 ACCENT_COLOR = (0, 140, 220)
 ACCENT_WARN = (220, 140, 0)
 
@@ -196,7 +196,7 @@ class Renderer:
             rect = pygame.Rect(bx, by, 86, 24)
 
             is_sel = (p_type == selected)
-            bg_col = (210, 225, 245) if is_sel else SURFACE_ALT_COLOR
+            bg_col = (195, 230, 222) if is_sel else SURFACE_ALT_COLOR
             pygame.draw.rect(self.screen, bg_col, rect, border_radius=4)
 
             border_col = ACCENT_COLOR if is_sel else BORDER_COLOR
@@ -217,7 +217,7 @@ class Renderer:
             return
 
         panel_rect = pygame.Rect(GRID_OFFSET_X + 15, GRID_OFFSET_Y + 15, 290, 575)
-        pygame.draw.rect(self.screen, (245, 245, 250), panel_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (245, 250, 248), panel_rect, border_radius=10)
         pygame.draw.rect(self.screen, ACCENT_COLOR, panel_rect, 2, border_radius=10)
 
         header_str = "SETTINGS"
@@ -244,7 +244,7 @@ class Renderer:
                 else:
                     val_str = pygame.key.name(k_code).upper() if k_code else "NONE"
 
-            item_bg = (210, 225, 245) if is_selected else SURFACE_ALT_COLOR
+            item_bg = (195, 230, 222) if is_selected else SURFACE_ALT_COLOR
             item_rect = pygame.Rect(panel_rect.x + 12, y, 266, 26)
             pygame.draw.rect(self.screen, item_bg, item_rect, border_radius=5)
 
