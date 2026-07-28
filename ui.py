@@ -68,10 +68,10 @@ class Renderer:
 
         # Render active piece & ghost
         if engine.active_piece and not engine.game_over:
-            # Ghost piece (increased visibility with a stronger mix towards white/surface color)
+            # Ghost piece (increased visibility with a stronger mix towards white/surface color and thicker border)
             ghost_y = engine.get_ghost_y()
             base_col = COLORS[engine.active_piece.type]
-            ghost_color = tuple(min(255, int(c + (255 - c) * 0.45)) for c in base_col)
+            ghost_color = tuple(min(255, int(c + (255 - c) * 0.65)) for c in base_col)
             for bx, by in engine.active_piece.get_blocks(y=ghost_y):
                 if by >= 20:
                     self._draw_cell(bx, by - 20, ghost_color, border_only=True, ghost=True)
@@ -88,7 +88,7 @@ class Renderer:
         rect = pygame.Rect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2)
 
         if border_only:
-            border_width = 3 if ghost else 2
+            border_width = 4 if ghost else 2
             pygame.draw.rect(self.screen, color, rect, border_width, border_radius=4)
         else:
             pygame.draw.rect(self.screen, color, rect, border_radius=4)
