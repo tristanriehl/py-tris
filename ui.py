@@ -28,6 +28,7 @@ class Renderer:
         self._draw_hold(engine)
         self._draw_queue(engine)
         self._draw_info_overlay(config)
+        self._draw_palette(input_handler)
         self._draw_settings_panel(config, input_handler)
 
         pygame.display.flip()
@@ -110,9 +111,12 @@ class Renderer:
             piece_type = engine.queue[i]
             color = COLORS[piece_type]
             blocks = TETROMINOES[piece_type][0]
+            slot_rect = pygame.Rect(box_rect.x + 10, box_rect.y + 45 + i * 70, 110, 65)
+            pygame.draw.rect(self.screen, (20, 22, 30), slot_rect, border_radius=4)
+            pygame.draw.rect(self.screen, (40, 40, 55), slot_rect, 1, border_radius=4)
             for bx, by in blocks:
-                px = box_rect.x + 30 + bx * 18
-                py = box_rect.y + 50 + i * 70 + by * 18
+                px = slot_rect.x + 25 + bx * 18
+                py = slot_rect.y + 12 + by * 18
                 pygame.draw.rect(self.screen, color, (px, py, 16, 16), border_radius=2)
 
     def _draw_info_overlay(self, config):
@@ -125,12 +129,48 @@ class Renderer:
             "[TAB] Toggle Settings",
             "[R] Reset Board",
             "[I] Import (test.png)",
+            "[L-Click] Paint / Queue",
+            "[R-Click] Erase / Queue",
         ]
         y = 200
         for line in info:
             txt = self.font.render(line, True, (160, 160, 180))
             self.screen.blit(txt, (35, y))
             y += 24
+
+    def _draw_palette(self, input_handler):
+        box_rect = pygame.Rect(35, 390, 160, 260)
+        pygame.draw.rect(self.screen, (10, 10, 15), box_rect)
+        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, 2)
+
+        txt = self.title_font.render("BRUSH", True, (200, 200, 200))
+        self.screen.blit(txt, (box_rect.x + 10, box_rect.y + 8))
+
+        selected = input_handler.selected_paint_piece if input_handler else 'G'
+
+        palette_items = ['G', 'I', 'J', 'L', 'O', 'S', 'T', 'Z', None]
+        for idx, p_type in enumerate(palette_items):
+            col = idx % 2
+            row = idx // 2
+            bx = box_rect.x + 12 + col * 70
+            by = 390 + 38 + row * 40
+            rect = pygame.Rect(bx, by, 62, 32)
+
+            is_sel = (p_type == selected)
+            bg_col = (40, 50, 70) if is_sel else (20, 22, 30)
+            pygame.draw.rect(self.screen, bg_col, rect, border_radius=4)
+
+            border_col = (0, 240, 240) if is_sel else BORDER_COLOR
+            pygame.draw.rect(self.screen, border_col, rect, 2, border_radius=4)
+
+            if p_type is None:
+                lbl = self.font.render("ERASE", True, (200, 100, 100))
+                self.screen.blit(lbl, (bx + (62 - lbl.get_width()) // 2, by + 7))
+            else:
+                color = COLORS.get(p_type, (150, 150, 150))
+                pygame.draw.rect(self.screen, color, (bx + 8, by + 8, 16, 16), border_radius=2)
+                lbl = self.font.render(p_type, True, (220, 220, 220))
+                self.screen.blit(lbl, (bx + 32, by + 7))
 
     def _draw_settings_panel(self, config, input_handler):
         panel_rect = pygame.Rect(690, GRID_OFFSET_Y, 210, 600)

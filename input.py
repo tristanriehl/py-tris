@@ -36,6 +36,10 @@ class InputHandler:
         self.selected_setting_index = 0
         self.rebinding = False
 
+        self.selected_paint_piece = 'G'
+        self.mouse_left_down = False
+        self.mouse_right_down = False
+
         self.last_time = time.perf_counter()
 
     def update_config(self, config):
@@ -132,12 +136,83 @@ class InputHandler:
                 elif key == self.keybinds.get("soft_drop"):
                     self.soft_drop_pressed = False
 
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    self.mouse_left_down = True
+                    self._handle_mouse_click(event.pos, engine, is_left=True)
+                elif event.button == 3:
+                    self.mouse_right_down = True
+                    self._handle_mouse_click(event.pos, engine, is_left=False)
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    self.mouse_left_down = False
+                elif event.button == 3:
+                    self.mouse_right_down = False
+
+            elif event.type == pygame.MOUSEMOTION:
+                if self.mouse_left_down:
+                    self._handle_board_drag(event.pos, engine, paint=True)
+                elif self.mouse_right_down:
+                    self._handle_board_drag(event.pos, engine, paint=False)
+
         if not self.in_settings:
             # Continuous Input Processing (DAS / ARR / Soft Drop)
             self._handle_das_arr(dt_ms, engine)
             self._handle_soft_drop(dt_ms, engine)
 
         return True
+
+    def _handle_mouse_click(self, pos, engine, is_left):
+        if self.in_settings:
+            return
+
+        mx, my = pos
+
+        # Check Palette click
+        palette_items = ['G', 'I', 'J', 'L', 'O', 'S', 'T', 'Z', None]
+        if 35 <= mx < 195 and 390 <= my < 650:
+            for idx, p_type in enumerate(palette_items):
+                col = idx % 2
+                row = idx // 2
+                bx = 35 + 12 + col * 70
+                by = 390 + 38 + row * 40
+                if bx <= mx < bx + 62 and by <= my < by + 32:
+                    self.selected_paint_piece = p_type
+                    return
+
+        # Check Queue click
+        if 540 <= mx < 670 and 50 <= my < 470:
+            for i in range(min(5, len(engine.queue))):
+                qy = 50 + 45 + i * 70
+                if qy <= my < qy + 65:
+                    tetro_types = ['I', 'J', 'L', 'O', 'S', 'T', 'Z']
+                    if is_left and self.selected_paint_piece in tetro_types:
+                        engine.queue[i] = self.selected_paint_piece
+                    else:
+                        curr = engine.queue[i]
+                        curr_idx = tetro_types.index(curr) if curr in tetro_types else 0
+                        step = 1 if is_left else -1
+                        next_type = tetro_types[(curr_idx + step) % len(tetro_types)]
+                        engine.queue[i] = next_type
+                    return
+
+        # Check Board click
+        self._handle_board_drag(pos, engine, paint=is_left)
+
+    def _handle_board_drag(self, pos, engine, paint):
+        if self.in_settings:
+            return
+
+        mx, my = pos
+        grid_x = (mx - 220) // 30
+        grid_y = (my - 50) // 30
+        if 0 <= grid_x < 10 and 0 <= grid_y < 20:
+            board_r = 20 + grid_y
+            if paint:
+                engine.board[board_r][grid_x] = self.selected_paint_piece
+            else:
+                engine.board[board_r][grid_x] = None
 
     def _handle_settings_keydown(self, key):
         if key in (pygame.K_UP, pygame.K_w):
