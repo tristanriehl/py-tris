@@ -6,7 +6,7 @@ from input import SETTINGS_ITEMS
 CELL_SIZE = 30
 GRID_OFFSET_X = 220
 GRID_OFFSET_Y = 50
-WINDOW_WIDTH = 920
+WINDOW_WIDTH = 690
 WINDOW_HEIGHT = 700
 
 BACKGROUND_COLOR = (18, 18, 24)
@@ -192,17 +192,17 @@ class Renderer:
         if not in_settings:
             return
 
-        panel_rect = pygame.Rect(690, GRID_OFFSET_Y, 210, 600)
-        pygame.draw.rect(self.screen, (10, 10, 15), panel_rect)
+        panel_rect = pygame.Rect(GRID_OFFSET_X + 10, GRID_OFFSET_Y + 10, 280, 580)
+        pygame.draw.rect(self.screen, (10, 10, 15), panel_rect, border_radius=8)
 
         border_col = (0, 200, 240)
-        pygame.draw.rect(self.screen, border_col, panel_rect, 2)
+        pygame.draw.rect(self.screen, border_col, panel_rect, 2, border_radius=8)
 
         header_str = "SETTINGS (ACTIVE)"
         txt = self.title_font.render(header_str, True, (0, 240, 240))
         self.screen.blit(txt, (panel_rect.x + 10, panel_rect.y + 10))
 
-        y = panel_rect.y + 45
+        y = panel_rect.y + 42
         sel_idx = input_handler.selected_setting_index if input_handler else -1
         rebinding = input_handler.rebinding if input_handler else False
 
@@ -223,7 +223,7 @@ class Renderer:
                     val_str = pygame.key.name(k_code).upper() if k_code else "NONE"
 
             item_bg = (40, 50, 70) if is_selected else (20, 22, 30)
-            item_rect = pygame.Rect(panel_rect.x + 8, y, 194, 28)
+            item_rect = pygame.Rect(panel_rect.x + 8, y, 264, 28)
             pygame.draw.rect(self.screen, item_bg, item_rect, border_radius=4)
 
             label_col = (255, 255, 255) if is_selected else (160, 160, 180)
