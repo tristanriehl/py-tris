@@ -31,12 +31,14 @@ class Renderer:
     def render(self, engine, config, input_handler=None):
         win_w, win_h = self.screen.get_size()
         
-        # Calculate adaptive scale factor based on height (main constraint for 20-row board)
-        scale = win_h / float(BASE_WINDOW_HEIGHT)
+        # Calculate adaptive scale factor based on both width and height to prevent any clipping/hiding
+        scale_w = win_w / float(BASE_WINDOW_WIDTH)
+        scale_h = win_h / float(BASE_WINDOW_HEIGHT)
+        scale = min(scale_w, scale_h)
         
-        # Center the content horizontally if window becomes wider than base aspect ratio
+        # Center the content horizontally in the window
         content_w = BASE_WINDOW_WIDTH * scale
-        offset_x = max(10, (win_w - content_w) / 2.0)
+        offset_x = max(0, (win_w - content_w) / 2.0)
 
         self.screen.fill(BACKGROUND_COLOR)
 
