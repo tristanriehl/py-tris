@@ -68,13 +68,13 @@ class Renderer:
 
         # Render active piece & ghost
         if engine.active_piece and not engine.game_over:
-            # Ghost piece
+            # Ghost piece (increased visibility with a stronger mix towards white/surface color)
             ghost_y = engine.get_ghost_y()
             base_col = COLORS[engine.active_piece.type]
-            ghost_color = tuple(min(255, int(c + (255 - c) * 0.75)) for c in base_col)
+            ghost_color = tuple(min(255, int(c + (255 - c) * 0.45)) for c in base_col)
             for bx, by in engine.active_piece.get_blocks(y=ghost_y):
                 if by >= 20:
-                    self._draw_cell(bx, by - 20, ghost_color, border_only=True)
+                    self._draw_cell(bx, by - 20, ghost_color, border_only=True, ghost=True)
 
             # Active piece
             active_color = COLORS[engine.active_piece.type]
@@ -82,13 +82,14 @@ class Renderer:
                 if by >= 20:
                     self._draw_cell(bx, by - 20, active_color)
 
-    def _draw_cell(self, grid_x, grid_y, color, border_only=False):
+    def _draw_cell(self, grid_x, grid_y, color, border_only=False, ghost=False):
         px = GRID_OFFSET_X + grid_x * CELL_SIZE
         py = GRID_OFFSET_Y + grid_y * CELL_SIZE
         rect = pygame.Rect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2)
 
         if border_only:
-            pygame.draw.rect(self.screen, color, rect, 2, border_radius=4)
+            border_width = 3 if ghost else 2
+            pygame.draw.rect(self.screen, color, rect, border_width, border_radius=4)
         else:
             pygame.draw.rect(self.screen, color, rect, border_radius=4)
             # Add soft inner highlight for modern glossy feel
