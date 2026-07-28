@@ -3,11 +3,11 @@ from engine import COLORS, TETROMINOES, BOARD_WIDTH, VISIBLE_HEIGHT
 
 from input import SETTINGS_ITEMS
 
-CELL_SIZE = 30
-GRID_OFFSET_X = 260
-GRID_OFFSET_Y = 30
-WINDOW_WIDTH = 780
-WINDOW_HEIGHT = 730
+BASE_CELL_SIZE = 30
+BASE_GRID_OFFSET_X = 260
+BASE_GRID_OFFSET_Y = 30
+BASE_WINDOW_WIDTH = 780
+BASE_WINDOW_HEIGHT = 730
 
 BACKGROUND_COLOR = (0x66, 0x66, 0x6E)
 SURFACE_COLOR = (0x99, 0x99, 0xA1)
@@ -23,40 +23,51 @@ class Renderer:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("TETR.IO Modular Practice Engine")
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
+        self.screen = pygame.display.set_mode((BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT), pygame.RESIZABLE)
         self.font = pygame.font.SysFont("Helvetica", 13)
         self.title_font = pygame.font.SysFont("Helvetica", 14, bold=True)
         self.header_font = pygame.font.SysFont("Helvetica", 16, bold=True)
 
     def render(self, engine, config, input_handler=None):
+        win_w, win_h = self.screen.get_size()
+        
+        # Calculate adaptive scale factor based on height (main constraint for 20-row board)
+        scale = win_h / float(BASE_WINDOW_HEIGHT)
+        
+        # Center the content horizontally if window becomes wider than base aspect ratio
+        content_w = BASE_WINDOW_WIDTH * scale
+        offset_x = max(10, (win_w - content_w) / 2.0)
+
         self.screen.fill(BACKGROUND_COLOR)
 
-        self._draw_board(engine)
-        self._draw_hold(engine)
-        self._draw_queue(engine, input_handler)
-        self._draw_info_overlay(config)
-        self._draw_palette(input_handler)
-        self._draw_settings_panel(config, input_handler)
+        self._draw_board(engine, scale, offset_x)
+        self._draw_hold(engine, scale, offset_x)
+        self._draw_queue(engine, input_handler, scale, offset_x)
+        self._draw_info_overlay(config, scale, offset_x)
+        self._draw_palette(input_handler, scale, offset_x)
+        self._draw_settings_panel(config, input_handler, scale, offset_x)
 
         pygame.display.flip()
 
-    def _draw_board(self, engine):
-        # Board container with modern card styling & subtle drop shadow appearance
+    def _draw_board(self, engine, scale, offset_x):
+        cell_size = int(BASE_CELL_SIZE * scale)
+        grid_offset_x = int(offset_x + BASE_GRID_OFFSET_X * scale)
+        grid_offset_y = int(BASE_GRID_OFFSET_Y * scale)
+
         board_rect = pygame.Rect(
-            GRID_OFFSET_X, GRID_OFFSET_Y,
-            BOARD_WIDTH * CELL_SIZE, VISIBLE_HEIGHT * CELL_SIZE
+            grid_offset_x, grid_offset_y,
+            BOARD_WIDTH * cell_size, VISIBLE_HEIGHT * cell_size
         )
-        # Background fill
-        pygame.draw.rect(self.screen, SURFACE_COLOR, board_rect, border_radius=6)
-        pygame.draw.rect(self.screen, BORDER_COLOR, board_rect, 2, border_radius=6)
+        pygame.draw.rect(self.screen, SURFACE_COLOR, board_rect, border_radius=int(6 * scale))
+        pygame.draw.rect(self.screen, BORDER_COLOR, board_rect, max(1, int(2 * scale)), border_radius=int(6 * scale))
 
         # Draw grid lines
         for x in range(1, BOARD_WIDTH):
-            px = GRID_OFFSET_X + x * CELL_SIZE
-            pygame.draw.line(self.screen, GRID_LINE_COLOR, (px, GRID_OFFSET_Y + 2), (px, GRID_OFFSET_Y + VISIBLE_HEIGHT * CELL_SIZE - 2))
+            px = grid_offset_x + x * cell_size
+            pygame.draw.line(self.screen, GRID_LINE_COLOR, (px, grid_offset_y + int(2 * scale)), (px, grid_offset_y + VISIBLE_HEIGHT * cell_size - int(2 * scale)), max(1, int(scale)))
         for y in range(1, VISIBLE_HEIGHT):
-            py = GRID_OFFSET_Y + y * CELL_SIZE
-            pygame.draw.line(self.screen, GRID_LINE_COLOR, (GRID_OFFSET_X + 2, py), (GRID_OFFSET_X + BOARD_WIDTH * CELL_SIZE - 2, py))
+            py = grid_offset_y + y * cell_size
+            pygame.draw.line(self.screen, GRID_LINE_COLOR, (grid_offset_x + int(2 * scale), py), (grid_offset_x + BOARD_WIDTH * cell_size - int(2 * scale), py), max(1, int(scale)))
 
         # Render stack
         for r in range(20, 40):
@@ -64,101 +75,110 @@ class Renderer:
                 piece_type = engine.board[r][c]
                 if piece_type:
                     color = COLORS.get(piece_type, (150, 150, 150))
-                    self._draw_cell(c, r - 20, color)
+                    self._draw_cell(c, r - 20, color, scale, grid_offset_x, grid_offset_y, cell_size)
 
         # Render active piece & ghost
         if engine.active_piece and not engine.game_over:
-            # Ghost piece (semi-transparent filled solid blocks)
             ghost_y = engine.get_ghost_y()
             base_col = COLORS[engine.active_piece.type]
             for bx, by in engine.active_piece.get_blocks(y=ghost_y):
                 if by >= 20:
-                    self._draw_cell(bx, by - 20, base_col, ghost=True)
+                    self._draw_cell(bx, by - 20, base_col, scale, grid_offset_x, grid_offset_y, cell_size, ghost=True)
 
-            # Active piece
             active_color = COLORS[engine.active_piece.type]
             for bx, by in engine.active_piece.get_blocks():
                 if by >= 20:
-                    self._draw_cell(bx, by - 20, active_color)
+                    self._draw_cell(bx, by - 20, active_color, scale, grid_offset_x, grid_offset_y, cell_size)
 
-    def _draw_cell(self, grid_x, grid_y, color, ghost=False):
-        px = GRID_OFFSET_X + grid_x * CELL_SIZE
-        py = GRID_OFFSET_Y + grid_y * CELL_SIZE
+    def _draw_cell(self, grid_x, grid_y, color, scale, grid_offset_x, grid_offset_y, cell_size, ghost=False):
+        px = grid_offset_x + grid_x * cell_size
+        py = grid_offset_y + grid_y * cell_size
 
         if ghost:
-            # Create a semi-transparent surface for the ghost block
-            surf = pygame.Surface((CELL_SIZE - 2, CELL_SIZE - 2), pygame.SRCALPHA)
-            # Alpha ~ 90 out of 255 gives a nice transparent solid fill
+            surf = pygame.Surface((cell_size - max(1, int(2 * scale)), cell_size - max(1, int(2 * scale))), pygame.SRCALPHA)
             ghost_color = (color[0], color[1], color[2], 90)
-            pygame.draw.rect(surf, ghost_color, surf.get_rect(), border_radius=4)
-            self.screen.blit(surf, (px + 1, py + 1))
+            pygame.draw.rect(surf, ghost_color, surf.get_rect(), border_radius=int(4 * scale))
+            self.screen.blit(surf, (px + max(1, int(scale)), py + max(1, int(scale))))
         else:
-            rect = pygame.Rect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2)
-            pygame.draw.rect(self.screen, color, rect, border_radius=4)
-            # Add soft inner highlight for modern glossy feel
-            highlight_rect = pygame.Rect(px + 3, py + 3, CELL_SIZE - 6, 4)
+            rect = pygame.Rect(px + max(1, int(scale)), py + max(1, int(scale)), cell_size - max(1, int(2 * scale)), cell_size - max(1, int(2 * scale)))
+            pygame.draw.rect(self.screen, color, rect, border_radius=int(4 * scale))
+            
+            highlight_rect = pygame.Rect(px + max(2, int(3 * scale)), py + max(2, int(3 * scale)), cell_size - max(4, int(6 * scale)), max(2, int(4 * scale)))
             highlight_color = (min(255, color[0] + 50), min(255, color[1] + 50), min(255, color[2] + 50))
-            pygame.draw.rect(self.screen, highlight_color, highlight_rect, border_radius=2)
+            pygame.draw.rect(self.screen, highlight_color, highlight_rect, border_radius=int(2 * scale))
 
-    def _draw_hold(self, engine):
-        box_rect = pygame.Rect(30, GRID_OFFSET_Y, 200, 100)
-        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=8)
-        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, 1, border_radius=8)
+    def _draw_hold(self, engine, scale, offset_x):
+        bx_x = offset_x + 30 * scale
+        bx_y = BASE_GRID_OFFSET_Y * scale
+        box_rect = pygame.Rect(bx_x, bx_y, 200 * scale, 100 * scale)
+        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=int(8 * scale))
+        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, max(1, int(scale)), border_radius=int(8 * scale))
 
         txt = self.header_font.render("HOLD", True, TEXT_MAIN)
-        self.screen.blit(txt, (box_rect.x + 14, box_rect.y + 12))
+        if scale != 1.0:
+            txt = pygame.transform.smoothscale(txt, (int(txt.get_width() * scale), int(txt.get_height() * scale)))
+        self.screen.blit(txt, (box_rect.x + 14 * scale, box_rect.y + 12 * scale))
 
         if engine.hold_piece:
             color = COLORS[engine.hold_piece] if engine.can_hold else (160, 160, 175)
             blocks = TETROMINOES[engine.hold_piece][0]
             for bx, by in blocks:
-                px = box_rect.x + 110 + bx * 18
-                py = box_rect.y + 45 + by * 18
-                pygame.draw.rect(self.screen, color, (px, py, 16, 16), border_radius=3)
+                px = box_rect.x + 110 * scale + bx * 18 * scale
+                py = box_rect.y + 45 * scale + by * 18 * scale
+                pygame.draw.rect(self.screen, color, (px, py, 16 * scale, 16 * scale), border_radius=int(3 * scale))
 
-    def _draw_queue(self, engine, input_handler=None):
-        box_rect = pygame.Rect(580, GRID_OFFSET_Y, 170, 400)
-        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=8)
+    def _draw_queue(self, engine, input_handler, scale, offset_x):
+        bx_x = offset_x + 580 * scale
+        bx_y = BASE_GRID_OFFSET_Y * scale
+        box_rect = pygame.Rect(bx_x, bx_y, 170 * scale, 400 * scale)
+        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=int(8 * scale))
 
         in_queue_input = input_handler.in_queue_input if input_handler else False
         border_col = ACCENT_WARN if in_queue_input else BORDER_COLOR
-        pygame.draw.rect(self.screen, border_col, box_rect, 2 if in_queue_input else 1, border_radius=8)
+        pygame.draw.rect(self.screen, border_col, box_rect, int((2 if in_queue_input else 1) * scale), border_radius=int(8 * scale))
 
         title_str = "NEXT (TYPING)" if in_queue_input else "NEXT"
         txt = self.header_font.render(title_str, True, ACCENT_WARN if in_queue_input else TEXT_MAIN)
-        self.screen.blit(txt, (box_rect.x + 14, box_rect.y + 12))
+        if scale != 1.0:
+            txt = pygame.transform.smoothscale(txt, (int(txt.get_width() * scale), int(txt.get_height() * scale)))
+        self.screen.blit(txt, (box_rect.x + 14 * scale, box_rect.y + 12 * scale))
 
-        # Active Queue Input Text Box Indicator
         if in_queue_input:
-            input_box = pygame.Rect(box_rect.x + 12, box_rect.y + 38, 146, 26)
-            pygame.draw.rect(self.screen, SURFACE_ALT_COLOR, input_box, border_radius=4)
-            pygame.draw.rect(self.screen, ACCENT_WARN, input_box, 1, border_radius=4)
+            input_box = pygame.Rect(box_rect.x + 12 * scale, box_rect.y + 38 * scale, 146 * scale, 26 * scale)
+            pygame.draw.rect(self.screen, SURFACE_ALT_COLOR, input_box, border_radius=int(4 * scale))
+            pygame.draw.rect(self.screen, ACCENT_WARN, input_box, max(1, int(scale)), border_radius=int(4 * scale))
             q_str = "".join(engine.queue[-7:]) + "_"
             q_txt = self.font.render(q_str, True, ACCENT_WARN)
-            self.screen.blit(q_txt, (input_box.x + 6, input_box.y + 6))
+            if scale != 1.0:
+                q_txt = pygame.transform.smoothscale(q_txt, (int(q_txt.get_width() * scale), int(q_txt.get_height() * scale)))
+            self.screen.blit(q_txt, (input_box.x + 6 * scale, input_box.y + 6 * scale))
 
         start_y = 70 if in_queue_input else 42
         for i in range(min(5, len(engine.queue))):
             piece_type = engine.queue[i]
             color = COLORS[piece_type]
             blocks = TETROMINOES[piece_type][0]
-            slot_rect = pygame.Rect(box_rect.x + 12, box_rect.y + start_y + i * 62, 146, 56)
-            pygame.draw.rect(self.screen, SURFACE_ALT_COLOR, slot_rect, border_radius=6)
-            pygame.draw.rect(self.screen, BORDER_COLOR, slot_rect, 1, border_radius=6)
+            slot_rect = pygame.Rect(box_rect.x + 12 * scale, box_rect.y + (start_y + i * 62) * scale, 146 * scale, 56 * scale)
+            pygame.draw.rect(self.screen, SURFACE_ALT_COLOR, slot_rect, border_radius=int(6 * scale))
+            pygame.draw.rect(self.screen, BORDER_COLOR, slot_rect, max(1, int(scale)), border_radius=int(6 * scale))
             for bx, by in blocks:
-                px = slot_rect.x + 45 + bx * 15
-                py = slot_rect.y + 10 + by * 15
-                pygame.draw.rect(self.screen, color, (px, py, 14, 14), border_radius=2)
+                px = slot_rect.x + 45 * scale + bx * 15 * scale
+                py = slot_rect.y + 10 * scale + by * 15 * scale
+                pygame.draw.rect(self.screen, color, (px, py, 14 * scale, 14 * scale), border_radius=int(2 * scale))
 
-    def _draw_info_overlay(self, config):
+    def _draw_info_overlay(self, config, scale, offset_x):
         handling = config.get("handling", {})
         keybinds = config.get("keybinds", {})
-        box_rect = pygame.Rect(30, 310, 200, 230)
-        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=8)
-        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, 1, border_radius=8)
+        bx_x = offset_x + 30 * scale
+        bx_y = 310 * scale
+        box_rect = pygame.Rect(bx_x, bx_y, 200 * scale, 230 * scale)
+        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=int(8 * scale))
+        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, max(1, int(scale)), border_radius=int(8 * scale))
 
         txt = self.header_font.render("CONTROLS & INFO", True, TEXT_MAIN)
-        self.screen.blit(txt, (box_rect.x + 14, box_rect.y + 12))
+        if scale != 1.0:
+            txt = pygame.transform.smoothscale(txt, (int(txt.get_width() * scale), int(txt.get_height() * scale)))
+        self.screen.blit(txt, (box_rect.x + 14 * scale, box_rect.y + 12 * scale))
 
         reset_key = pygame.key.name(keybinds.get("reset", pygame.K_r)).upper()
         import_key = pygame.key.name(keybinds.get("import_screenshot", pygame.K_i)).upper()
@@ -174,23 +194,29 @@ class Renderer:
             f"[{import_key}] Import Screenshot",
             "[Click/Drag] Paint Board",
         ]
-        y = box_rect.y + 38
+        y = box_rect.y + 38 * scale
         for line in info:
             line_color = TEXT_MUTED if line.startswith("[") or "ms" in line or "x" in line else TEXT_MAIN
             if line == "":
-                y += 6
+                y += 6 * scale
                 continue
             txt = self.font.render(line, True, line_color)
-            self.screen.blit(txt, (box_rect.x + 14, y))
-            y += 20
+            if scale != 1.0:
+                txt = pygame.transform.smoothscale(txt, (int(txt.get_width() * scale), int(txt.get_height() * scale)))
+            self.screen.blit(txt, (box_rect.x + 14 * scale, y))
+            y += 20 * scale
 
-    def _draw_palette(self, input_handler):
-        box_rect = pygame.Rect(30, 115, 200, 180)
-        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=8)
-        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, 1, border_radius=8)
+    def _draw_palette(self, input_handler, scale, offset_x):
+        bx_x = offset_x + 30 * scale
+        bx_y = 115 * scale
+        box_rect = pygame.Rect(bx_x, bx_y, 200 * scale, 180 * scale)
+        pygame.draw.rect(self.screen, SURFACE_COLOR, box_rect, border_radius=int(8 * scale))
+        pygame.draw.rect(self.screen, BORDER_COLOR, box_rect, max(1, int(scale)), border_radius=int(8 * scale))
 
         txt = self.header_font.render("BRUSH PALETTE", True, TEXT_MAIN)
-        self.screen.blit(txt, (box_rect.x + 14, box_rect.y + 12))
+        if scale != 1.0:
+            txt = pygame.transform.smoothscale(txt, (int(txt.get_width() * scale), int(txt.get_height() * scale)))
+        self.screen.blit(txt, (box_rect.x + 14 * scale, box_rect.y + 12 * scale))
 
         selected = input_handler.selected_paint_piece if input_handler else 'G'
 
@@ -198,40 +224,46 @@ class Renderer:
         for idx, p_type in enumerate(palette_items):
             col = idx % 2
             row = idx // 2
-            bx = box_rect.x + 12 + col * 90
-            by = box_rect.y + 38 + row * 28
-            rect = pygame.Rect(bx, by, 86, 24)
+            bx = box_rect.x + (12 + col * 90) * scale
+            by = box_rect.y + (38 + row * 28) * scale
+            rect = pygame.Rect(bx, by, 86 * scale, 24 * scale)
 
             is_sel = (p_type == selected)
             bg_col = (110, 110, 125) if is_sel else SURFACE_ALT_COLOR
-            pygame.draw.rect(self.screen, bg_col, rect, border_radius=4)
+            pygame.draw.rect(self.screen, bg_col, rect, border_radius=int(4 * scale))
 
             border_col = ACCENT_COLOR if is_sel else BORDER_COLOR
-            pygame.draw.rect(self.screen, border_col, rect, 1 if not is_sel else 2, border_radius=4)
+            pygame.draw.rect(self.screen, border_col, rect, int((1 if not is_sel else 2) * scale), border_radius=int(4 * scale))
 
             if p_type is None:
                 lbl = self.font.render("ERASE", True, (255, 120, 120))
-                self.screen.blit(lbl, (bx + (86 - lbl.get_width()) // 2, by + 5))
+                if scale != 1.0:
+                    lbl = pygame.transform.smoothscale(lbl, (int(lbl.get_width() * scale), int(lbl.get_height() * scale)))
+                self.screen.blit(lbl, (bx + (86 * scale - lbl.get_width()) // 2, by + 5 * scale))
             else:
                 color = COLORS.get(p_type, (150, 150, 150))
-                pygame.draw.rect(self.screen, color, (bx + 6, by + 5, 14, 14), border_radius=3)
+                pygame.draw.rect(self.screen, color, (bx + 6 * scale, by + 5 * scale, 14 * scale, 14 * scale), border_radius=int(3 * scale))
                 lbl = self.font.render(p_type, True, TEXT_MAIN)
-                self.screen.blit(lbl, (bx + 26, by + 4))
+                if scale != 1.0:
+                    lbl = pygame.transform.smoothscale(lbl, (int(lbl.get_width() * scale), int(lbl.get_height() * scale)))
+                self.screen.blit(lbl, (bx + 26 * scale, by + 4 * scale))
 
-    def _draw_settings_panel(self, config, input_handler):
+    def _draw_settings_panel(self, config, input_handler, scale, offset_x):
         in_settings = input_handler.in_settings if input_handler else False
         if not in_settings:
             return
 
-        panel_rect = pygame.Rect(GRID_OFFSET_X + 15, GRID_OFFSET_Y + 15, 290, 575)
-        pygame.draw.rect(self.screen, (110, 110, 120), panel_rect, border_radius=10)
-        pygame.draw.rect(self.screen, ACCENT_COLOR, panel_rect, 2, border_radius=10)
+        panel_rect = pygame.Rect(offset_x + (BASE_GRID_OFFSET_X + 15) * scale, (BASE_GRID_OFFSET_Y + 15) * scale, 290 * scale, 575 * scale)
+        pygame.draw.rect(self.screen, (110, 110, 120), panel_rect, border_radius=int(10 * scale))
+        pygame.draw.rect(self.screen, ACCENT_COLOR, panel_rect, max(1, int(2 * scale)), border_radius=int(10 * scale))
 
         header_str = "SETTINGS"
         txt = self.header_font.render(header_str, True, ACCENT_COLOR)
-        self.screen.blit(txt, (panel_rect.x + 16, panel_rect.y + 16))
+        if scale != 1.0:
+            txt = pygame.transform.smoothscale(txt, (int(txt.get_width() * scale), int(txt.get_height() * scale)))
+        self.screen.blit(txt, (panel_rect.x + 16 * scale, panel_rect.y + 16 * scale))
 
-        y = panel_rect.y + 48
+        y = panel_rect.y + 48 * scale
         sel_idx = input_handler.selected_setting_index if input_handler else -1
         rebinding = input_handler.rebinding if input_handler else False
 
@@ -252,21 +284,26 @@ class Renderer:
                     val_str = pygame.key.name(k_code).upper() if k_code else "NONE"
 
             item_bg = (110, 110, 125) if is_selected else SURFACE_ALT_COLOR
-            item_rect = pygame.Rect(panel_rect.x + 12, y, 266, 26)
-            pygame.draw.rect(self.screen, item_bg, item_rect, border_radius=5)
+            item_rect = pygame.Rect(panel_rect.x + 12 * scale, y, 266 * scale, 26 * scale)
+            pygame.draw.rect(self.screen, item_bg, item_rect, border_radius=int(5 * scale))
 
             label_col = TEXT_MAIN if is_selected else TEXT_MUTED
             val_col = ACCENT_WARN if (is_selected and rebinding) else (ACCENT_COLOR if is_selected else TEXT_MAIN)
 
             lbl_txt = self.font.render(label, True, label_col)
             val_txt = self.font.render(val_str, True, val_col)
+            if scale != 1.0:
+                lbl_txt = pygame.transform.smoothscale(lbl_txt, (int(lbl_txt.get_width() * scale), int(lbl_txt.get_height() * scale)))
+                val_txt = pygame.transform.smoothscale(val_txt, (int(val_txt.get_width() * scale), int(val_txt.get_height() * scale)))
 
-            self.screen.blit(lbl_txt, (item_rect.x + 8, item_rect.y + 5))
-            self.screen.blit(val_txt, (item_rect.right - val_txt.get_width() - 8, item_rect.y + 5))
+            self.screen.blit(lbl_txt, (item_rect.x + 8 * scale, item_rect.y + 5 * scale))
+            self.screen.blit(val_txt, (item_rect.right - val_txt.get_width() - 8 * scale, item_rect.y + 5 * scale))
 
-            y += 30
+            y += 30 * scale
 
         if in_settings:
             help_msg = "Up/Down: Select | Left/Right: Adjust | Enter: Rebind"
             help_txt = self.font.render(help_msg, True, TEXT_MUTED)
-            self.screen.blit(help_txt, (panel_rect.x + 14, panel_rect.bottom - 28))
+            if scale != 1.0:
+                help_txt = pygame.transform.smoothscale(help_txt, (int(help_txt.get_width() * scale), int(help_txt.get_height() * scale)))
+            self.screen.blit(help_txt, (panel_rect.x + 14 * scale, panel_rect.bottom - 28 * scale))
