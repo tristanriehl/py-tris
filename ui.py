@@ -68,13 +68,12 @@ class Renderer:
 
         # Render active piece & ghost
         if engine.active_piece and not engine.game_over:
-            # Ghost piece (increased visibility with a stronger mix towards white/surface color and thicker border)
+            # Ghost piece (semi-transparent filled solid blocks)
             ghost_y = engine.get_ghost_y()
             base_col = COLORS[engine.active_piece.type]
-            ghost_color = tuple(min(255, int(c + (255 - c) * 0.65)) for c in base_col)
             for bx, by in engine.active_piece.get_blocks(y=ghost_y):
                 if by >= 20:
-                    self._draw_cell(bx, by - 20, ghost_color, border_only=True, ghost=True)
+                    self._draw_cell(bx, by - 20, base_col, ghost=True)
 
             # Active piece
             active_color = COLORS[engine.active_piece.type]
@@ -82,15 +81,19 @@ class Renderer:
                 if by >= 20:
                     self._draw_cell(bx, by - 20, active_color)
 
-    def _draw_cell(self, grid_x, grid_y, color, border_only=False, ghost=False):
+    def _draw_cell(self, grid_x, grid_y, color, ghost=False):
         px = GRID_OFFSET_X + grid_x * CELL_SIZE
         py = GRID_OFFSET_Y + grid_y * CELL_SIZE
-        rect = pygame.Rect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2)
 
-        if border_only:
-            border_width = 4 if ghost else 2
-            pygame.draw.rect(self.screen, color, rect, border_width, border_radius=4)
+        if ghost:
+            # Create a semi-transparent surface for the ghost block
+            surf = pygame.Surface((CELL_SIZE - 2, CELL_SIZE - 2), pygame.SRCALPHA)
+            # Alpha ~ 90 out of 255 gives a nice transparent solid fill
+            ghost_color = (color[0], color[1], color[2], 90)
+            pygame.draw.rect(surf, ghost_color, surf.get_rect(), border_radius=4)
+            self.screen.blit(surf, (px + 1, py + 1))
         else:
+            rect = pygame.Rect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2)
             pygame.draw.rect(self.screen, color, rect, border_radius=4)
             # Add soft inner highlight for modern glossy feel
             highlight_rect = pygame.Rect(px + 3, py + 3, CELL_SIZE - 6, 4)
