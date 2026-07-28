@@ -95,6 +95,10 @@ def capture_and_parse_screenshot(engine):
     """
     Triggers OS screenshot tool to take a selection, then loads board state.
     """
+    import pygame
+    pygame.display.iconify()
+    pygame.time.wait(150)
+
     temp_path = os.path.join(tempfile.gettempdir(), "tetris_screenshot.png")
     if os.path.exists(temp_path):
         os.remove(temp_path)
