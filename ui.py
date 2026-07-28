@@ -9,15 +9,15 @@ GRID_OFFSET_Y = 30
 WINDOW_WIDTH = 780
 WINDOW_HEIGHT = 730
 
-BACKGROUND_COLOR = (13, 13, 18)
-SURFACE_COLOR = (20, 20, 28)
-SURFACE_ALT_COLOR = (26, 26, 36)
-GRID_LINE_COLOR = (30, 30, 42)
-BORDER_COLOR = (45, 45, 62)
-TEXT_MAIN = (220, 220, 235)
-TEXT_MUTED = (130, 130, 155)
-ACCENT_COLOR = (0, 210, 255)
-ACCENT_WARN = (255, 190, 0)
+BACKGROUND_COLOR = (240, 240, 245)
+SURFACE_COLOR = (255, 255, 255)
+SURFACE_ALT_COLOR = (230, 230, 238)
+GRID_LINE_COLOR = (215, 215, 225)
+BORDER_COLOR = (200, 200, 215)
+TEXT_MAIN = (40, 40, 55)
+TEXT_MUTED = (110, 110, 130)
+ACCENT_COLOR = (0, 140, 220)
+ACCENT_WARN = (220, 140, 0)
 
 class Renderer:
     def __init__(self):
@@ -70,7 +70,8 @@ class Renderer:
         if engine.active_piece and not engine.game_over:
             # Ghost piece
             ghost_y = engine.get_ghost_y()
-            ghost_color = tuple(max(0, int(c * 0.25)) for c in COLORS[engine.active_piece.type])
+            base_col = COLORS[engine.active_piece.type]
+            ghost_color = tuple(min(255, int(c + (255 - c) * 0.75)) for c in base_col)
             for bx, by in engine.active_piece.get_blocks(y=ghost_y):
                 if by >= 20:
                     self._draw_cell(bx, by - 20, ghost_color, border_only=True)
@@ -104,7 +105,7 @@ class Renderer:
         self.screen.blit(txt, (box_rect.x + 14, box_rect.y + 12))
 
         if engine.hold_piece:
-            color = COLORS[engine.hold_piece] if engine.can_hold else (90, 90, 110)
+            color = COLORS[engine.hold_piece] if engine.can_hold else (160, 160, 175)
             blocks = TETROMINOES[engine.hold_piece][0]
             for bx, by in blocks:
                 px = box_rect.x + 110 + bx * 18
@@ -194,14 +195,14 @@ class Renderer:
             rect = pygame.Rect(bx, by, 86, 24)
 
             is_sel = (p_type == selected)
-            bg_col = (35, 45, 65) if is_sel else SURFACE_ALT_COLOR
+            bg_col = (210, 225, 245) if is_sel else SURFACE_ALT_COLOR
             pygame.draw.rect(self.screen, bg_col, rect, border_radius=4)
 
             border_col = ACCENT_COLOR if is_sel else BORDER_COLOR
             pygame.draw.rect(self.screen, border_col, rect, 1 if not is_sel else 2, border_radius=4)
 
             if p_type is None:
-                lbl = self.font.render("ERASE", True, (240, 120, 120))
+                lbl = self.font.render("ERASE", True, (200, 60, 60))
                 self.screen.blit(lbl, (bx + (86 - lbl.get_width()) // 2, by + 5))
             else:
                 color = COLORS.get(p_type, (150, 150, 150))
@@ -215,7 +216,7 @@ class Renderer:
             return
 
         panel_rect = pygame.Rect(GRID_OFFSET_X + 15, GRID_OFFSET_Y + 15, 290, 575)
-        pygame.draw.rect(self.screen, (15, 15, 22), panel_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (245, 245, 250), panel_rect, border_radius=10)
         pygame.draw.rect(self.screen, ACCENT_COLOR, panel_rect, 2, border_radius=10)
 
         header_str = "SETTINGS"
@@ -242,7 +243,7 @@ class Renderer:
                 else:
                     val_str = pygame.key.name(k_code).upper() if k_code else "NONE"
 
-            item_bg = (35, 45, 65) if is_selected else SURFACE_ALT_COLOR
+            item_bg = (210, 225, 245) if is_selected else SURFACE_ALT_COLOR
             item_rect = pygame.Rect(panel_rect.x + 12, y, 266, 26)
             pygame.draw.rect(self.screen, item_bg, item_rect, border_radius=5)
 
@@ -255,7 +256,7 @@ class Renderer:
             self.screen.blit(lbl_txt, (item_rect.x + 8, item_rect.y + 5))
             self.screen.blit(val_txt, (item_rect.right - val_txt.get_width() - 8, item_rect.y + 5))
 
-            y + 30
+            y += 30
 
         if in_settings:
             help_msg = "Up/Down: Select | Left/Right: Adjust | Enter: Rebind"
