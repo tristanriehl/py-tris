@@ -17,7 +17,7 @@ class Renderer:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("TETR.IO Modular Practice Engine")
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
         self.font = pygame.font.SysFont("Helvetica", 15)
         self.title_font = pygame.font.SysFont("Helvetica", 20, bold=True)
 
@@ -142,10 +142,10 @@ class Renderer:
             "",
             "[TAB] Toggle Settings",
             "[Q] Type Queue (I,J,L...)",
+            "[Ctrl+Z/Y] Undo / Redo",
             "[R] Reset Board",
             "[I] Import Screenshot",
-            "[L-Click] Paint / Queue",
-            "[R-Click] Erase / Queue",
+            "[L/R-Click] Paint/Hold/Queue",
         ]
         y = 200
         for line in info:
@@ -211,7 +211,10 @@ class Renderer:
 
             if category == "handling":
                 val = config.get("handling", {}).get(item_key, 0.0)
-                val_str = f"{val:.1f}ms"
+                if isinstance(val, bool):
+                    val_str = "ON" if val else "OFF"
+                else:
+                    val_str = f"{val:.1f}ms"
             else: # keybinds
                 k_code = config.get("keybinds", {}).get(item_key, 0)
                 if is_selected and rebinding:

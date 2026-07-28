@@ -112,12 +112,13 @@ class Tetromino:
         return [(x + bx, y + by) for bx, by in local_blocks]
 
 class TetrisEngine:
-    def __init__(self, lock_delay_ms=500.0, max_lock_resets=15):
+    def __init__(self, lock_delay_ms=500.0, max_lock_resets=15, infinite_hold=True):
         self.board = [[None for _ in range(BOARD_WIDTH)] for _ in range(BOARD_HEIGHT)]
         self.bag = []
         self.queue = []
         self.hold_piece = None
         self.can_hold = True
+        self.infinite_hold = infinite_hold
         self.active_piece = None
         
         self.lock_delay_ms = lock_delay_ms
@@ -127,8 +128,59 @@ class TetrisEngine:
         self.is_grounded = False
         self.game_over = False
 
+        self.undo_stack = []
+        self.redo_stack = []
+
         self._refill_queue()
         self.spawn_piece()
+
+    def get_state(self):
+        return {
+            'board': [row[:] for row in self.board],
+            'queue': list(self.queue),
+            'bag': list(self.bag),
+            'hold_piece': self.hold_piece,
+            'can_hold': self.can_hold,
+            'game_over': self.game_over,
+            'active_piece': (self.active_piece.type, self.active_piece.orient, self.active_piece.x, self.active_piece.y) if self.active_piece else None
+        }
+
+    def set_state(self, state):
+        self.board = [row[:] for row in state['board']]
+        self.queue = list(state['queue'])
+        self.bag = list(state['bag'])
+        self.hold_piece = state['hold_piece']
+        self.can_hold = state['can_hold']
+        self.game_over = state['game_over']
+        if state['active_piece']:
+            p_type, orient, x, y = state['active_piece']
+            self.active_piece = Tetromino(p_type)
+            self.active_piece.orient = orient
+            self.active_piece.x = x
+            self.active_piece.y = y
+        else:
+            self.active_piece = None
+        self.lock_timer = 0.0
+        self.lock_resets = 0
+        self.is_grounded = False
+
+    def save_state(self):
+        self.undo_stack.append(self.get_state())
+        if len(self.undo_stack) > 50:
+            self.undo_stack.pop(0)
+        self.redo_stack.clear()
+
+    def undo(self):
+        if self.undo_stack:
+            self.redo_stack.append(self.get_state())
+            state = self.undo_stack.pop()
+            self.set_state(state)
+
+    def redo(self):
+        if self.redo_stack:
+            self.undo_stack.append(self.get_state())
+            state = self.redo_stack.pop()
+            self.set_state(state)
 
     def _refill_queue(self):
         while len(self.queue) < 7:
@@ -239,9 +291,12 @@ class TetrisEngine:
         return False
 
     def hold(self):
-        if not self.can_hold or not self.active_piece or self.game_over:
+        if not self.active_piece or self.game_over:
+            return
+        if not self.can_hold and not self.infinite_hold:
             return
 
+        self.save_state()
         curr_type = self.active_piece.type
         if self.hold_piece is None:
             self.hold_piece = curr_type
@@ -250,9 +305,11 @@ class TetrisEngine:
             self.hold_piece, curr_type = curr_type, self.hold_piece
             self.spawn_piece(curr_type)
 
-        self.can_hold = False
+        if not self.infinite_hold:
+            self.can_hold = False
 
     def lock_piece(self):
+        self.save_state()
         for bx, by in self.active_piece.get_blocks():
             if 0 <= bx < BOARD_WIDTH and 0 <= by < BOARD_HEIGHT:
                 self.board[by][bx] = self.active_piece.type
@@ -275,6 +332,7 @@ class TetrisEngine:
         return ghost_y
 
     def reset_board(self):
+        self.save_state()
         self.board = [[None for _ in range(BOARD_WIDTH)] for _ in range(BOARD_HEIGHT)]
         self.bag = []
         self.queue = []

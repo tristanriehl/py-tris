@@ -4,6 +4,7 @@ import pygame
 SETTINGS_ITEMS = [
     ("das_ms", "handling", "DAS (ms)"),
     ("arr_ms", "handling", "ARR (ms)"),
+    ("infinite_hold", "handling", "Infinite Hold"),
     ("move_left", "keybinds", "Move Left"),
     ("move_right", "keybinds", "Move Right"),
     ("soft_drop", "keybinds", "Soft Drop"),
@@ -50,9 +51,11 @@ class InputHandler:
         self.arr_ms = handling.get("arr_ms", 0.0)
         self.sdf = handling.get("sdf", 40.0)
         self.dcd_ms = handling.get("dcd_ms", 0.0)
+        self.infinite_hold = handling.get("infinite_hold", True)
         self.keybinds = config.get("keybinds", {})
 
     def process_input(self, engine, importer_callback=None):
+        engine.infinite_hold = self.infinite_hold
         now = time.perf_counter()
         dt_ms = (now - self.last_time) * 1000.0
         self.last_time = now
@@ -63,6 +66,22 @@ class InputHandler:
 
             elif event.type == pygame.KEYDOWN:
                 key = event.key
+
+                mods = pygame.key.get_mods()
+                is_cmd_or_ctrl = bool(mods & (pygame.KMOD_CTRL | pygame.KMOD_META))
+                is_shift = bool(mods & pygame.KMOD_SHIFT)
+
+                # Undo / Redo handling
+                if is_cmd_or_ctrl and not self.rebinding and not self.in_settings:
+                    if key == pygame.K_z:
+                        if is_shift:
+                            engine.redo()
+                        else:
+                            engine.undo()
+                        continue
+                    elif key == pygame.K_y:
+                        engine.redo()
+                        continue
 
                 # Rebinding mode takes precedence
                 if self.rebinding:
@@ -165,12 +184,13 @@ class InputHandler:
                     self.soft_drop_pressed = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    self.mouse_left_down = True
-                    self._handle_mouse_click(event.pos, engine, is_left=True)
-                elif event.button == 3:
-                    self.mouse_right_down = True
-                    self._handle_mouse_click(event.pos, engine, is_left=False)
+                if event.button in (1, 3):
+                    if event.button == 1:
+                        self.mouse_left_down = True
+                        self._handle_mouse_click(event.pos, engine, is_left=True)
+                    elif event.button == 3:
+                        self.mouse_right_down = True
+                        self._handle_mouse_click(event.pos, engine, is_left=False)
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
@@ -209,12 +229,29 @@ class InputHandler:
                     self.selected_paint_piece = p_type
                     return
 
+        # Check Hold Box click
+        if 50 <= mx < 180 and 50 <= my < 170:
+            engine.save_state()
+            tetro_types = ['I', 'J', 'L', 'O', 'S', 'T', 'Z']
+            if is_left and self.selected_paint_piece in tetro_types:
+                engine.hold_piece = self.selected_paint_piece
+            elif is_left and self.selected_paint_piece is None:
+                engine.hold_piece = None
+            else:
+                curr = engine.hold_piece
+                curr_idx = tetro_types.index(curr) if curr in tetro_types else -1
+                step = 1 if is_left else -1
+                next_type = tetro_types[(curr_idx + step) % len(tetro_types)]
+                engine.hold_piece = next_type
+            return
+
         # Check Queue click
         if 540 <= mx < 670 and 50 <= my < 470:
             self.in_queue_input = True
             for i in range(min(5, len(engine.queue))):
                 qy = 50 + 45 + i * 70
                 if qy <= my < qy + 65:
+                    engine.save_state()
                     tetro_types = ['I', 'J', 'L', 'O', 'S', 'T', 'Z']
                     if is_left and self.selected_paint_piece in tetro_types:
                         engine.queue[i] = self.selected_paint_piece
@@ -238,10 +275,10 @@ class InputHandler:
         grid_y = (my - 50) // 30
         if 0 <= grid_x < 10 and 0 <= grid_y < 20:
             board_r = 20 + grid_y
-            if paint:
-                engine.board[board_r][grid_x] = self.selected_paint_piece
-            else:
-                engine.board[board_r][grid_x] = None
+            new_val = self.selected_paint_piece if paint else None
+            if engine.board[board_r][grid_x] != new_val:
+                engine.save_state()
+                engine.board[board_r][grid_x] = new_val
 
     def _handle_settings_keydown(self, key):
         if key in (pygame.K_UP, pygame.K_w):
@@ -252,22 +289,30 @@ class InputHandler:
             item_key, category, _ = SETTINGS_ITEMS[self.selected_setting_index]
 
             if category == "handling":
-                val = float(self.config["handling"].get(item_key, 0.0))
-                step = 1.0 if item_key == "arr_ms" else 5.0
+                if item_key == "infinite_hold":
+                    if key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_a, pygame.K_d, pygame.K_RETURN, pygame.K_SPACE):
+                        curr = self.config["handling"].get("infinite_hold", True)
+                        self.config["handling"]["infinite_hold"] = not curr
+                        self.update_config(self.config)
+                        if self.save_config_cb:
+                            self.save_config_cb(self.config)
+                else:
+                    val = float(self.config["handling"].get(item_key, 0.0))
+                    step = 1.0 if item_key == "arr_ms" else 5.0
 
-                if key in (pygame.K_LEFT, pygame.K_a, pygame.K_MINUS, pygame.K_KP_MINUS):
-                    val = max(0.0, val - step)
-                    self.config["handling"][item_key] = val
-                    self.update_config(self.config)
-                    if self.save_config_cb:
-                        self.save_config_cb(self.config)
+                    if key in (pygame.K_LEFT, pygame.K_a, pygame.K_MINUS, pygame.K_KP_MINUS):
+                        val = max(0.0, val - step)
+                        self.config["handling"][item_key] = val
+                        self.update_config(self.config)
+                        if self.save_config_cb:
+                            self.save_config_cb(self.config)
 
-                elif key in (pygame.K_RIGHT, pygame.K_d, pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
-                    val += step
-                    self.config["handling"][item_key] = val
-                    self.update_config(self.config)
-                    if self.save_config_cb:
-                        self.save_config_cb(self.config)
+                    elif key in (pygame.K_RIGHT, pygame.K_d, pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+                        val += step
+                        self.config["handling"][item_key] = val
+                        self.update_config(self.config)
+                        if self.save_config_cb:
+                            self.save_config_cb(self.config)
 
             elif category == "keybinds":
                 if key in (pygame.K_RETURN, pygame.K_SPACE):
