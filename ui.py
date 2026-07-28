@@ -179,19 +179,18 @@ class Renderer:
 
     def _draw_settings_panel(self, config, input_handler):
         in_settings = input_handler.in_settings if input_handler else False
-        panel_height = 600 if in_settings else 40
-        panel_rect = pygame.Rect(690, GRID_OFFSET_Y, 210, panel_height)
-        pygame.draw.rect(self.screen, (10, 10, 15), panel_rect)
-
-        border_col = (0, 200, 240) if in_settings else BORDER_COLOR
-        pygame.draw.rect(self.screen, border_col, panel_rect, 2)
-
-        header_str = "SETTINGS (ACTIVE)" if in_settings else "SETTINGS [TAB]"
-        txt = self.title_font.render(header_str, True, (0, 240, 240) if in_settings else (180, 180, 200))
-        self.screen.blit(txt, (panel_rect.x + 10, panel_rect.y + 10))
-
         if not in_settings:
             return
+
+        panel_rect = pygame.Rect(690, GRID_OFFSET_Y, 210, 600)
+        pygame.draw.rect(self.screen, (10, 10, 15), panel_rect)
+
+        border_col = (0, 200, 240)
+        pygame.draw.rect(self.screen, border_col, panel_rect, 2)
+
+        header_str = "SETTINGS (ACTIVE)"
+        txt = self.title_font.render(header_str, True, (0, 240, 240))
+        self.screen.blit(txt, (panel_rect.x + 10, panel_rect.y + 10))
 
         y = panel_rect.y + 45
         sel_idx = input_handler.selected_setting_index if input_handler else -1
