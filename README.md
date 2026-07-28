@@ -1,6 +1,6 @@
 # Tetris Modular Practice Engine
 
-This is a modular practice engine for the game Tetris. It allows users to customize their gameplay experience by modifying various settings and features. This is essentially a python for of Four-tris. Any feedback is welcome
+This is a modular practice engine for the game Tetris. It allows users to customize their gameplay experience by modifying various settings and features. This is essentially a python version Four-tris. Any feedback is welcome
 
 ## Installation
 
