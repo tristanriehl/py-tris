@@ -9,8 +9,8 @@ GRID_OFFSET_Y = 30
 WINDOW_WIDTH = 780
 WINDOW_HEIGHT = 730
 
-BACKGROUND_COLOR = (0xCB, 0xF7, 0xED)
-SURFACE_COLOR = (255, 255, 255)
+BACKGROUND_COLOR = (0x8E, 0xA8, 0xC3)
+SURFACE_COLOR = (0xCB, 0xF7, 0xED)
 SURFACE_ALT_COLOR = (215, 240, 235)
 GRID_LINE_COLOR = (185, 220, 212)
 BORDER_COLOR = (160, 205, 195)
@@ -147,6 +147,9 @@ class Renderer:
                 py = slot_rect.y + 10 + by * 15
                 pygame.draw.rect(self.screen, color, (px, py, 14, 14), border_radius=2)
 
+    def _draw_info_overlay(self, config):
+        handling = config.get("handling", {})
+        box_rect = pygame.Rect(30, 310, 200, 230)
     def _draw_info_overlay(self, config):
         handling = config.get("handling", {})
         box_rect = pygame.Rect(30, 310, 200, 230)

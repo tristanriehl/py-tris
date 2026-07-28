@@ -42,6 +42,12 @@ class InputHandler:
         self.mouse_left_down = False
         self.mouse_right_down = False
 
+        # Smooth undo/redo repeat rate state
+        self.undo_repeat_timer = 0.0
+        self.undo_repeat_delay_ms = 400.0  # Initial delay before repeating
+        self.undo_repeat_interval_ms = 80.0  # Repeat interval while holding
+        self.last_undo_key = None
+
         self.last_time = time.perf_counter()
 
     def update_config(self, config):
@@ -67,7 +73,6 @@ class InputHandler:
         is_shift = bool(mods & pygame.KMOD_SHIFT)
 
         # Check continuous movement states directly from key down/up events or polling
-        # We update left/right based on current physical key states to prevent stuck keys or modifier blockage
         left_key = self.keybinds.get("move_left")
         right_key = self.keybinds.get("move_right")
         soft_drop_key = self.keybinds.get("soft_drop")
@@ -93,6 +98,47 @@ class InputHandler:
         if soft_drop_key and soft_drop_key < len(pressed_keys):
             self.soft_drop_pressed = bool(pressed_keys[soft_drop_key])
 
+        # Smooth continuous repeating for Ctrl+Z / Ctrl+Shift+Z (Undo / Redo) when held down
+        if is_cmd_or_ctrl and not self.rebinding and not self.in_settings:
+            z_pressed = pressed_keys[pygame.K_z]
+            y_pressed = pressed_keys[pygame.K_y]
+            
+            target_key = None
+            if z_pressed:
+                target_key = pygame.K_z
+            elif y_pressed:
+                target_key = pygame.K_y
+
+            if target_key:
+                if self.last_undo_key != target_key:
+                    # Initial single trigger on press
+                    self.undo_repeat_timer = -self.undo_repeat_delay_ms
+                    self.last_undo_key = target_key
+                    if target_key == pygame.K_z:
+                        if is_shift:
+                            engine.redo()
+                        else:
+                            engine.undo()
+                    else:
+                        engine.redo()
+                else:
+                    self.undo_repeat_timer += dt_ms
+                    while self.undo_repeat_timer >= self.undo_repeat_interval_ms:
+                        self.undo_repeat_timer -= self.undo_repeat_interval_ms
+                        if target_key == pygame.K_z:
+                            if is_shift:
+                                engine.redo()
+                            else:
+                                engine.undo()
+                        else:
+                            engine.redo()
+            else:
+                self.last_undo_key = None
+                self.undo_repeat_timer = 0.0
+        else:
+            self.last_undo_key = None
+            self.undo_repeat_timer = 0.0
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
@@ -100,7 +146,7 @@ class InputHandler:
             elif event.type == pygame.KEYDOWN:
                 key = event.key
 
-                # Undo / Redo handling
+                # Undo / Redo single press handling
                 if is_cmd_or_ctrl and not self.rebinding and not self.in_settings:
                     if key == pygame.K_z:
                         if is_shift:
